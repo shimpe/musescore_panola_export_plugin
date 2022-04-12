@@ -28,6 +28,8 @@ MuseScore {
    property	var arrMeasures: [];
    property var mapStaffToPartIndex : ({}); // must use round brackets otherwise it is parsed as a binding expression
    property var previousMeasureNo : null;
+   property var tieOnGoing : ({});
+   property var accumulatedDuration : ({});
    
    function initStaffToPartIdx() {
       var staffNo = 0;
@@ -91,6 +93,14 @@ MuseScore {
       return dur;
    }
    
+   function panolaAccumulatedDuration(duration_numden) {
+      var dur = "";
+      dur += duration_numden[1];
+      if (duration_numden[0] != 1)
+         dur +=   "*" + duration_numden[0];
+      return dur;
+   }
+   
    function measureSeparatorIfNeeded(tick)
    {
       var measureNo = tickToMeasure(tick);
@@ -107,7 +117,63 @@ MuseScore {
       return "";
    }
    
-   function panolaChord(notes, duration, tick, isRest) {
+   function gcd_two_numbers(x, y) {
+      if ((typeof x !== 'number') || (typeof y !== 'number')) 
+         return false;
+      x = Math.abs(x);
+      y = Math.abs(y);
+      while(y) {
+         var t = y;
+         y = x % y;
+         x = t;
+      }
+      return x;
+   }
+   
+   function addDuration(duration_numden1, duration_numden2)
+   {
+      var num1 = duration_numden1[0];
+      var den1 = duration_numden1[1];
+      var num2 = duration_numden2[0];
+      var den2 = duration_numden2[1];
+      var num3 = num1*den2 + num2*den1;
+      var den3 = den1*den2;
+      return [num3 / gcd_two_numbers(num3, den3), den3 / gcd_two_numbers(num3, den3)];
+   }
+   
+   function resetTieOngoing()
+   {
+      for (var note=0; note<128; note++)
+      {
+         accumulatedDuration[note] = [0,1];
+      }
+   }
+   
+   function updateTieOngoing(notes, duration_numden, tick) 
+   {
+      for (var i=0; i < notes.length; i++)
+      {
+         var note = notes[i];
+         if (note.tieForward != null)
+         {
+            console.log("found a tie for note " + note.pitch + " in measure " + tickToMeasure(tick));
+            tieOnGoing[note.pitch] = true;
+            accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
+            
+         } else 
+         {
+            if (tieOnGoing[note.pitch] == true) 
+            {
+               console.log("ending tie for note " + note.pitch + " in measure " + tickToMeasure(tick));  
+            }
+            tieOnGoing[note.pitch] = false;
+            accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
+         }
+      }
+   }
+   
+   function panolaChord(notes, duration, tick, isRest) 
+   {
       var chord = "";
       if (isRest) {
          
@@ -118,13 +184,17 @@ MuseScore {
          
          chord += " ";
          
+         tieOnGoing = ({});
+         
       } else {
          
          for (var i=0; i < notes.length; i++) {
             
+            updateTieOngoing(notes, [duration.numerator, duration.denominator], tick);
+            
             chord += measureSeparatorIfNeeded(tick);
             
-            if (i==0 && notes.length > 1)
+            if (i==0 && notes.length > 1 && (tieOnGoing[notes[i].pitch] == false))
             {
                chord += "<";
             }
@@ -132,60 +202,66 @@ MuseScore {
             if (typeof notes[i].tpc1 === "undefined") // like for grace notes ?!?
                return;
             
-            switch(notes[i].tpc1) {
-               case -1:chord += "f--"; break;
-               case  0: chord += "c--"; break;
-               case  1: chord += "g--"; break;
-               case  2: chord += "d--"; break;
-               case  3: chord += "a--"; break;
-               case  4: chord += "e--"; break;
-               case  5: chord += "b--"; break;
-               case  6: chord += "f-"; break;
-               case  7: chord += "c-"; break;
+            if (tieOnGoing[notes[i].pitch] == false)
+            {
+               switch(notes[i].tpc1) {
+                  case -1:chord += "f--"; break;
+                  case  0: chord += "c--"; break;
+                  case  1: chord += "g--"; break;
+                  case  2: chord += "d--"; break;
+                  case  3: chord += "a--"; break;
+                  case  4: chord += "e--"; break;
+                  case  5: chord += "b--"; break;
+                  case  6: chord += "f-"; break;
+                  case  7: chord += "c-"; break;
+                  
+                  case  8: chord += "g-"; break;
+                  case  9: chord += "d-"; break;
+                  case 10: chord += "a-"; break;
+                  case 11: chord += "e-"; break;
+                  case 12: chord += "b-"; break;
+                  case 13: chord += "f"; break;
+                  case 14: chord += "c"; break;
+                  case 15: chord += "g"; break;
+                  case 16: chord += "d"; break;
+                  case 17: chord += "a"; break;
+                  case 18: chord += "e"; break;
+                  case 19: chord += "b"; break;
+                  
+                  case 20: chord += "f#"; break;
+                  case 21: chord += "c#"; break;
+                  case 22: chord += "g#"; break;
+                  case 23: chord += "d#"; break;
+                  case 24: chord += "a#"; break;
+                  case 25: chord += "e#"; break;
+                  case 26: chord += "b#"; break;
+                  case 27: chord += "f##"; break;
+                  case 28: chord += "c##"; break;
+                  case 29: chord += "g##"; break;
+                  case 30: chord += "d##"; break;
+                  case 31: chord += "a##"; break;
+                  case 32: chord += "e##"; break;
+                  case 33: chord += "b##";break;
+                  default: text.text = qsTr("?")   + text.text; break;
+               }
+               // octave, middle C being C4
+               chord += (Math.floor(notes[i].pitch / 12) - 1)
                
-               case  8: chord += "g-"; break;
-               case  9: chord += "d-"; break;
-               case 10: chord += "a-"; break;
-               case 11: chord += "e-"; break;
-               case 12: chord += "b-"; break;
-               case 13: chord += "f"; break;
-               case 14: chord += "c"; break;
-               case 15: chord += "g"; break;
-               case 16: chord += "d"; break;
-               case 17: chord += "a"; break;
-               case 18: chord += "e"; break;
-               case 19: chord += "b"; break;
-               
-               case 20: chord += "f#"; break;
-               case 21: chord += "c#"; break;
-               case 22: chord += "g#"; break;
-               case 23: chord += "d#"; break;
-               case 24: chord += "a#"; break;
-               case 25: chord += "e#"; break;
-               case 26: chord += "b#"; break;
-               case 27: chord += "f##"; break;
-               case 28: chord += "c##"; break;
-               case 29: chord += "g##"; break;
-               case 30: chord += "d##"; break;
-               case 31: chord += "a##"; break;
-               case 32: chord += "e##"; break;
-               case 33: chord += "b##";break;
-               default: text.text = qsTr("?")   + text.text; break;
             }
-            // octave, middle C being C4
-            chord += (Math.floor(notes[i].pitch / 12) - 1)
             
-            if (i == 0) {            
+            if (i == 0 && (tieOnGoing[notes[i].pitch] == false)) {            
                chord += "_";
-               chord += panolaDuration(duration);
+               chord += panolaAccumulatedDuration(accumulatedDuration[notes[i].pitch]);
             }
             
-            if (i==(notes.length-1) && notes.length >1)
+            if (i==(notes.length-1) && notes.length >1 && (tieOnGoing[notes[i].pitch] == false))
             {
                chord += ">"
             }                       
             
-            chord += " ";  
+            if (tieOnGoing[notes[i].pitch] == false) {
+               chord += " ";    
+            }
          }  
       }
       return chord;
@@ -235,6 +311,8 @@ MuseScore {
             cursor.rewind(1); // beginning of selection
             cursor.voice    = voice;
             cursor.staffIdx = staff;
+            
+            resetTieOngoing();
             
             if (fullScore)  {// no selection
                cursor.rewind(0); // beginning of score
