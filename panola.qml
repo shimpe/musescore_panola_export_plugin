@@ -138,7 +138,8 @@ MuseScore {
       var den2 = duration_numden2[1];
       var num3 = num1*den2 + num2*den1;
       var den3 = den1*den2;
-      return [num3 / gcd_two_numbers(num3, den3), den3 / gcd_two_numbers(num3, den3)];
+      var simplification = gcd_two_numbers(num3, den3);
+      return [num3 / simplification, den3 / simplification];
    }
    
    function resetTieOngoing()
