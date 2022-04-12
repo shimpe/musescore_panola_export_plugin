@@ -142,6 +142,18 @@ MuseScore {
       return [num3 / simplification, den3 / simplification];
    }
    
+   function multiplyDuration(duration_numden1, multiplier_numden)
+   {
+      var num1 = duration_numden1[0];
+      var den1 = duration_numden1[1];
+      var num2 = multiplier_numden[0];
+      var den2 = multiplier_numden[1];
+      var num3 = num1*num2;
+      var den3 = den1*den2;
+      var simplification = gcd_two_numbers(num3, den3);
+      return [num3 / simplification, den3 / simplification];
+   }
+   
    function resetTieOngoing()
    {
       tieOnGoing = ({});
@@ -155,7 +167,7 @@ MuseScore {
    {
       if (note.tieForward != null)
       {
-         console.log("found a tie for note " + note.pitch + " in measure " + tickToMeasure(tick));
+         //console.log("found a tie for note " + note.pitch + " in measure " + tickToMeasure(tick));
          tieOnGoing[note.pitch] = true;
          accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
          
@@ -163,14 +175,14 @@ MuseScore {
       {
          if (tieOnGoing[note.pitch] == true) 
          {
-            console.log("ending tie for note " + note.pitch + " in measure " + tickToMeasure(tick));  
+            //console.log("ending tie for note " + note.pitch + " in measure " + tickToMeasure(tick));  
          }
          tieOnGoing[note.pitch] = false;
          accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
       }
    }
    
-   function panolaChord(notes, duration, tick, isRest) 
+   function panolaChord(notes, duration, tick, isRest, tuplet_multiplier) 
    {
       var chord = "";
       if (isRest) {
@@ -191,7 +203,7 @@ MuseScore {
             if (typeof notes[i].tpc1 === "undefined") // like for grace notes ?!?
                return;
             
-            updateTieOngoing(notes[i], [duration.numerator, duration.denominator], tick);
+            updateTieOngoing(notes[i], multiplyDuration([duration.numerator, duration.denominator], tuplet_multiplier), tick);
             
             chord += measureSeparatorIfNeeded(tick);
             
@@ -243,7 +255,7 @@ MuseScore {
                   default: text.text = qsTr("?")   + text.text; break;
                }
                // octave, middle C being C4
-               chord += (Math.floor(notes[i].pitch / 12) - 1)
+               chord += (Math.floor(notes[i].pitch / 12) - 1);
                
             }
             
@@ -251,6 +263,7 @@ MuseScore {
                chord += "_";
                chord += panolaAccumulatedDuration(accumulatedDuration[notes[i].pitch]);
                accumulatedDuration[notes[i].pitch] = [0,1];
+               //chord += "@vol[" + (parseFloat(notes[i].velocity)/127).toString() + "]";
             }
             
             if (i==(notes.length-1) && notes.length >1 && (tieOnGoing[notes[i].pitch] == false))
@@ -322,14 +335,34 @@ MuseScore {
                   // Now handle the note names on the main chord...
                   var notes = cursor.element.notes;
                   var duration = cursor.element.duration;
+                  var tuplet_multiplier = [1,1];
+                  var tuplet = cursor.element.tuplet;
+                  if (tuplet != null) 
+                  {
+                     var actualNotes = tuplet.actualNotes;
+                     var normalNotes = tuplet.normalNotes;
+                     tuplet_multiplier = [normalNotes, actualNotes];
+                     console.log("tuplet_multiplier ", tuplet_multiplier);
+                  }
+                  //console.log("cursor.element.velocity", cursor.element.velocity);
+                  //console.log("cursor.element.veloOffset", cursor.element.veloOffset);
+                  //console.log("cursor.element.veloChange", cursor.element.veloChange);
                   var tick = cursor.tick;
-                  text += panolaChord(notes, duration, tick, false);
+                  text += panolaChord(notes, duration, tick, false, tuplet_multiplier);
                } 
                else if (cursor.element && cursor.element.type === Element.REST) {
                   var notes = cursor.element.notes;
                   var duration = cursor.element.duration;
                   var tick = cursor.tick;
-                  text += panolaChord(notes, duration, tick, true);
+                  var tuplet = cursor.element.tuplet;
+                  if (tuplet != null) 
+                  {
+                     var actualNotes = tuplet.actualNotes;
+                     var normalNotes = tuplet.normalNotes;
+                     tuplet_multiplier = [normalNotes, actualNotes];
+                     console.log("tuplet_multiplier ", tuplet_multiplier);
+                  }
+                  text += panolaChord(notes, duration, tick, true, tuplet_multiplier);
                }
                else // end if CHORD 
                {
