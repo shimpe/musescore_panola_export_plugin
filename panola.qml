@@ -144,6 +144,7 @@ MuseScore {
    
    function resetTieOngoing()
    {
+      tieOnGoing = ({});
       for (var note=0; note<128; note++)
       {
          accumulatedDuration[note] = [0,1];
@@ -185,7 +186,7 @@ MuseScore {
          
          chord += " ";
          
-         tieOnGoing = ({});
+         resetTieOngoing();
          
       } else {
          
@@ -253,6 +254,7 @@ MuseScore {
             if (i == 0 && (tieOnGoing[notes[i].pitch] == false)) {            
                chord += "_";
                chord += panolaAccumulatedDuration(accumulatedDuration[notes[i].pitch]);
+               accumulatedDuration[notes[i].pitch] = [0,1];
             }
             
             if (i==(notes.length-1) && notes.length >1 && (tieOnGoing[notes[i].pitch] == false))
