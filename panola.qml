@@ -151,26 +151,22 @@ MuseScore {
       }
    }
    
-   function updateTieOngoing(notes, duration_numden, tick) 
+   function updateTieOngoing(note, duration_numden, tick) 
    {
-      for (var i=0; i < notes.length; i++)
+      if (note.tieForward != null)
       {
-         var note = notes[i];
-         if (note.tieForward != null)
+         console.log("found a tie for note " + note.pitch + " in measure " + tickToMeasure(tick));
+         tieOnGoing[note.pitch] = true;
+         accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
+         
+      } else 
+      {
+         if (tieOnGoing[note.pitch] == true) 
          {
-            console.log("found a tie for note " + note.pitch + " in measure " + tickToMeasure(tick));
-            tieOnGoing[note.pitch] = true;
-            accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
-            
-         } else 
-         {
-            if (tieOnGoing[note.pitch] == true) 
-            {
-               console.log("ending tie for note " + note.pitch + " in measure " + tickToMeasure(tick));  
-            }
-            tieOnGoing[note.pitch] = false;
-            accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
+            console.log("ending tie for note " + note.pitch + " in measure " + tickToMeasure(tick));  
          }
+         tieOnGoing[note.pitch] = false;
+         accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
       }
    }
    
@@ -192,7 +188,10 @@ MuseScore {
          
          for (var i=0; i < notes.length; i++) {
             
-            updateTieOngoing(notes, [duration.numerator, duration.denominator], tick);
+            if (typeof notes[i].tpc1 === "undefined") // like for grace notes ?!?
+               return;
+            
+            updateTieOngoing(notes[i], [duration.numerator, duration.denominator], tick);
             
             chord += measureSeparatorIfNeeded(tick);
             
@@ -200,9 +199,6 @@ MuseScore {
             {
                chord += "<";
             }
-            
-            if (typeof notes[i].tpc1 === "undefined") // like for grace notes ?!?
-               return;
             
             if (tieOnGoing[notes[i].pitch] == false)
             {
