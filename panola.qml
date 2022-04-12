@@ -264,7 +264,7 @@ MuseScore {
             if (text != "") {
                console.log("Exporting Staff= ", getPartNameFromPartIndex(mapStaffToPartIndex[staff], staff), " Voice= ", voice);
                //console.log('"' + text + '"');
-               fullText += "\nvar " + getPartNameFromPartIndex(mapStaffToPartIndex[staff], staff) + " = Panola([ " + text + "\"";
+               fullText += "\nvar " + getPartNameFromPartIndex(mapStaffToPartIndex[staff], staff) + " = Panola([\n" + text + "\"";
                fullText += " // measure " + previousMeasureNo;
                fullText += "\n].join(\" \"));\n";
             }
