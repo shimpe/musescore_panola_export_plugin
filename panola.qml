@@ -342,26 +342,22 @@ MuseScore {
                      var actualNotes = tuplet.actualNotes;
                      var normalNotes = tuplet.normalNotes;
                      tuplet_multiplier = [normalNotes, actualNotes];
-                     console.log("tuplet_multiplier ", tuplet_multiplier);
                   }
-                  //console.log("cursor.element.velocity", cursor.element.velocity);
-                  //console.log("cursor.element.veloOffset", cursor.element.veloOffset);
-                  //console.log("cursor.element.veloChange", cursor.element.veloChange);
                   var tick = cursor.tick;
                   text += panolaChord(notes, duration, tick, false, tuplet_multiplier);
                } 
                else if (cursor.element && cursor.element.type === Element.REST) {
                   var notes = cursor.element.notes;
                   var duration = cursor.element.duration;
-                  var tick = cursor.tick;
+                  var tuplet_multiplier = [1,1];
                   var tuplet = cursor.element.tuplet;
                   if (tuplet != null) 
                   {
                      var actualNotes = tuplet.actualNotes;
                      var normalNotes = tuplet.normalNotes;
                      tuplet_multiplier = [normalNotes, actualNotes];
-                     console.log("tuplet_multiplier ", tuplet_multiplier);
                   }
+                  var tick = cursor.tick;
                   text += panolaChord(notes, duration, tick, true, tuplet_multiplier);
                }
                else // end if CHORD 
