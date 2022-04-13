@@ -182,7 +182,46 @@ MuseScore {
       }
    }
    
-   function panolaChord(notes, duration, tick, isRest, tuplet_multiplier) 
+   function hasDynamics(segment, track, tick)
+   {
+      var annotations = segment.annotations;
+      for (var i = 0; i < annotations.length; ++i) {
+         var a = annotations[i];
+         if (a.track != track)
+               continue;
+         if (a.name == "Dynamic" && a.parent.tick == tick) {
+            if (a.text.includes("<sym>dynamicForte</sym>") || a.text.includes("<sym>dynamicPiano</sym>") || a.text.includes("<sym>dynamicMezzo</sym>"))
+            {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+   
+   function extractDynamics(segment, track, tick)
+   {
+      var annotations = segment.annotations;
+      for (var i = 0; i < annotations.length; ++i) {
+         var a = annotations[i];
+         if (a.track != track)
+               continue;
+         if (a.name == "Dynamic" && a.parent.tick == tick) {
+            var retval = 
+               "@vol[" +
+               a.text.split("<sym>dynamicForte</sym>").join("f")
+                     .split("<sym>dynamicPiano</sym>").join("p")
+                     .split("<sym>dynamicMezzo</sym>p").join("mp")
+                     .split("<sym>dynamicMezzo</sym>f").join("mf")
+               + "]";
+            console.log("retval ", retval);
+            return retval;
+         }
+      }
+      return "";
+   }
+   
+   function panolaChord(notes, duration, tick, isRest, tuplet_multiplier, dynamics) 
    {
       var chord = "";
       if (isRest) {
@@ -263,7 +302,10 @@ MuseScore {
                chord += "_";
                chord += panolaAccumulatedDuration(accumulatedDuration[notes[i].pitch]);
                accumulatedDuration[notes[i].pitch] = [0,1];
-               //chord += "@vol[" + (parseFloat(notes[i].velocity)/127).toString() + "]";
+               if (dynamics != "")
+               {
+                  chord += dynamics;
+               }
             }
             
             if (i==(notes.length-1) && notes.length >1 && (tieOnGoing[notes[i].pitch] == false))
@@ -291,6 +333,18 @@ MuseScore {
       var endTick;
       
       var fullText = "";
+      fullText += "var dynPPPPP = 10.0/127;\n";
+      fullText += "var dynPPPP = 20.0/127;\n";
+      fullText += "var dynPPP = 30.0/127;\n";
+      fullText += "var dynPP = 40.0/127;\n";
+      fullText += "var dynP = 50.0/127;\n";
+      fullText += "var dynMP = 60.0/127;\n";
+      fullText += "var dynMF = 70.0/127;\n";
+      fullText += "var dynF = 80.0/127;\n";
+      fullText += "var dynFF = 90.0/127;\n";
+      fullText += "var dynFFF = 100.0/127;\n";
+      fullText += "var dynFFFF = 110.0/127;\n";
+      fullText += "var dynFFFFF = 120.0/127;\n";
       
       initStaffToPartIdx();
       calculateMeasures();
@@ -343,8 +397,12 @@ MuseScore {
                      var normalNotes = tuplet.normalNotes;
                      tuplet_multiplier = [normalNotes, actualNotes];
                   }
+                  var trackIdx = staff*4 + voice;
+                  var dynamics = "";
+                  if (hasDynamics(cursor.segment, trackIdx, cursor.tick))
+                     dynamics = extractDynamics(cursor.segment, trackIdx, cursor.tick);
                   var tick = cursor.tick;
-                  text += panolaChord(notes, duration, tick, false, tuplet_multiplier);
+                  text += panolaChord(notes, duration, tick, false, tuplet_multiplier, dynamics);
                } 
                else if (cursor.element && cursor.element.type === Element.REST) {
                   var notes = cursor.element.notes;
@@ -358,7 +416,7 @@ MuseScore {
                      tuplet_multiplier = [normalNotes, actualNotes];
                   }
                   var tick = cursor.tick;
-                  text += panolaChord(notes, duration, tick, true, tuplet_multiplier);
+                  text += panolaChord(notes, duration, tick, true, tuplet_multiplier, "");
                }
                else // end if CHORD 
                {
@@ -372,7 +430,20 @@ MuseScore {
                //console.log('"' + text + '"');
                fullText += "\nvar " + getPartNameFromPartIndex(mapStaffToPartIndex[staff], staff) + " = Panola([\n" + text + "\"";
                fullText += " // measure " + previousMeasureNo;
-               fullText += "\n].join(\" \"));\n";
+               fullText += "\n].join(\" \")";
+               fullText += ".replace(\"[ppppp]\", \"[\" ++ dynPPPPP ++ \"]\")";
+               fullText += ".replace(\"[pppp]\", \"[\" ++ dynPPPP ++ \"]\")";
+               fullText += ".replace(\"[ppp]\", \"[\" ++ dynPPP ++ \"]\")";
+               fullText += ".replace(\"[pp]\", \"[\" ++ dynPP ++ \"]\")";
+               fullText += ".replace(\"[p]\", \"[\" ++ dynP ++ \"]\")";
+               fullText += ".replace(\"[mp]\", \"[\" ++ dynMP ++ \"]\")";
+               fullText += ".replace(\"[mf]\", \"[\" ++ dynMF ++ \"]\")";
+               fullText += ".replace(\"[f]\", \"[\" ++ dynF ++ \"]\")";
+               fullText += ".replace(\"[ff]\", \"[\" ++ dynFF ++ \"]\")";
+               fullText += ".replace(\"[fff]\", \"[\" ++ dynFFF ++ \"]\")";
+               fullText += ".replace(\"[ffff]\", \"[\" ++ dynFFFF ++ \"]\")";
+               fullText += ".replace(\"[fffff]\", \"[\" ++ dynFFFFF ++ \"]\")";
+               fullText += ");\n";
             }
          } // end for voice
       } // end for staff
