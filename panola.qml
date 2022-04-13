@@ -3,12 +3,13 @@
 //  MuseScore
 //  Music Composition & Notation
 //
-//  Note Names Plugin
+//  Panola generation plugin
 //
 //  Copyright (C) 2012 Werner Schweer
 //  Copyright (C) 2013 - 2020 Joachim Schmitz
 //  Copyright (C) 2014 Jörn Eichler
 //  Copyright (C) 2020 Johan Temmerman
+//  Copyright (C) 2022 Stefaan Himpe
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -31,6 +32,8 @@ MuseScore {
    property var tieOnGoing : ({});
    property var accumulatedDuration : ({});
    
+   // initStaffToPartIdx sets up a lookup table to convert staff index to part index
+   // e.g. a piano part consists of a single part, but which has two staffs
    function initStaffToPartIdx() {
       var staffNo = 0;
       for (var p=0; p < curScore.parts.length; p++) {
@@ -42,6 +45,7 @@ MuseScore {
       }  
    }
    
+   // calculateMeasures sets up a lookup table to convert ticks to measure numbers
    function calculateMeasures() {
       var cursor = curScore.newCursor()
       for (var trackIdx = 0; trackIdx < curScore.ntracks; trackIdx++) {
@@ -58,6 +62,8 @@ MuseScore {
       })
    }
    
+   // tickToMeasure converts a tick value to a measure number
+   // this only works if calculateMeasures has been executed before
    function tickToMeasure(tick) {
       // suppose that arrMeasures has been initialized already
       for (var index=0; index < arrMeasures.length-1; ++index) {
@@ -75,6 +81,8 @@ MuseScore {
       return arrMeasures.length;
    }
    
+   // getPartNameFromPartIndex converts the part number to a part (long) name
+   // the staff idx is used as suffix (e.g. a single piano part consists of two staffs)
    function getPartNameFromPartIndex(partidx, staffidx) {
       if (curScore.parts[partidx] != null) {
          var candidatePartName = curScore.parts[partidx].longName.toLowerCase().replace(/ /g, "_").replace(/[^a-zA-Z0-9_]+/g, "")
@@ -85,6 +93,7 @@ MuseScore {
       }
    }
    
+   // panolaDuration creates a panola duration string from a musescore duration object
    function panolaDuration(duration) {
       var dur = "";
       dur += duration.denominator;
@@ -93,6 +102,8 @@ MuseScore {
       return dur;
    }
    
+   // panolaAccumulatedDuration creates a panola duration string from a list [duration numerator, duration denominator]
+   // such lists are maintained while traversing the score as a way to handle ties (panola doesn't have a tie concept, so durations must be accumulated)
    function panolaAccumulatedDuration(duration_numden) {
       var dur = "";
       dur += duration_numden[1];
@@ -101,6 +112,7 @@ MuseScore {
       return dur;
    }
    
+   // this function checks if the current tick belongs to a new measure (compared to the previous check)
    function measureSeparatorIfNeeded(tick)
    {
       var measureNo = tickToMeasure(tick);
@@ -117,6 +129,7 @@ MuseScore {
       return "";
    }
    
+   // this function calculates the greatest common divisor between two numbers
    function gcd_two_numbers(x, y) {
       if ((typeof x !== 'number') || (typeof y !== 'number')) 
          return false;
@@ -130,6 +143,8 @@ MuseScore {
       return x;
    }
    
+   // addDuration adds two fractions together. Both fractions are represented as [numerator, denominator].
+   // addDuration can be used to add durations while handling tied notes
    function addDuration(duration_numden1, duration_numden2)
    {
       var num1 = duration_numden1[0];
@@ -142,6 +157,8 @@ MuseScore {
       return [num3 / simplification, den3 / simplification];
    }
    
+   // multiplyDuration multiplies two durations together
+   // this is used while handling tuplets
    function multiplyDuration(duration_numden1, multiplier_numden)
    {
       var num1 = duration_numden1[0];
@@ -154,6 +171,7 @@ MuseScore {
       return [num3 / simplification, den3 / simplification];
    }
    
+   // function to reset some internal state maintained while tracking how long a note in the current voice is tied
    function resetTieOngoing()
    {
       tieOnGoing = ({});
@@ -163,6 +181,7 @@ MuseScore {
       }
    }
    
+   // function to update some internal state maintained while tracking how long a note in the current voice is tied
    function updateTieOngoing(note, duration_numden, tick) 
    {
       if (note.tieForward != null)
@@ -173,15 +192,16 @@ MuseScore {
          
       } else 
       {
-         if (tieOnGoing[note.pitch] == true) 
-         {
-            //console.log("ending tie for note " + note.pitch + " in measure " + tickToMeasure(tick));  
-         }
+         //if (tieOnGoing[note.pitch] == true) 
+         //{
+         //   console.log("ending tie for note " + note.pitch + " in measure " + tickToMeasure(tick));  
+         //}
          tieOnGoing[note.pitch] = false;
          accumulatedDuration[note.pitch] = addDuration(accumulatedDuration[note.pitch], duration_numden);
       }
    }
    
+   // function that returns true if the current segment,track,tick has a dynamics indication
    function hasDynamics(segment, track, tick)
    {
       var annotations = segment.annotations;
@@ -199,6 +219,7 @@ MuseScore {
       return false;
    }
    
+   // function that returns the dynamics indication found at the current segment,track,tick in panola notation
    function extractDynamics(segment, track, tick)
    {
       var annotations = segment.annotations;
@@ -214,13 +235,14 @@ MuseScore {
                      .split("<sym>dynamicMezzo</sym>p").join("mp")
                      .split("<sym>dynamicMezzo</sym>f").join("mf")
                + "]";
-            console.log("retval ", retval);
+            //console.log("retval ", retval);
             return retval;
          }
       }
       return "";
    }
    
+   // function that generates a panola chord string taking into account the musescore chord, duration, tuplets, dynamics, etc
    function panolaChord(notes, duration, tick, isRest, tuplet_multiplier, dynamics) 
    {
       var chord = "";
@@ -321,6 +343,7 @@ MuseScore {
       return chord;
    }
    
+   // element that can save stuff to file - filename hardcoded for now
    FileIO {
       id: resultFile
       source: homePath() + "/panola.txt";
@@ -333,6 +356,10 @@ MuseScore {
       var endTick;
       
       var fullText = "";
+      fullText += "// Panola generated from musescore using plugin\n";
+      fullText += "// warning: notes that are tied over from a previous measure are added in the next measure instead\n";
+      fullText += "// warning: partially tied chords will not export correctly\n";
+      fullText += "// warning: grace notes currently are not supported\n";
       fullText += "var dynPPPPP = 10.0/127;\n";
       fullText += "var dynPPPP = 20.0/127;\n";
       fullText += "var dynPPP = 30.0/127;\n";
