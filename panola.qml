@@ -435,16 +435,6 @@ MuseScore {
                   // Now handle the note names on the main chord...
                   var notes = cursor.element.notes;
                   var duration = cursor.element.duration;
-                  var debugMeas = tickToMeasure(cursor.tick);
-                  if (debugMeas == 60)
-                  {
-                     console.log("duration num: ", duration.numerator, " denom: ", duration.denominator);
-                     for (var n = 0; n < 128; n++) {
-                        if (accumulatedDuration[n] != null && !listsEqual(accumulatedDuration[n], [0,1])) {
-                           console.log("pitch = ", n, " accumulatedDuration = ", accumulatedDuration[n]);
-                        }
-                     }
-                  }
                   var tuplet_multiplier = [1,1];
                   var tuplet = cursor.element.tuplet;
                   if (tuplet != null) 
