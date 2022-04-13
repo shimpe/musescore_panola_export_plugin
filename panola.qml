@@ -1,4 +1,3 @@
-
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
@@ -97,8 +96,9 @@ MuseScore {
    function panolaDuration(duration) {
       var dur = "";
       dur += duration.denominator;
-      if (duration.numerator != 1)
-         dur +=   "*" + duration.numerator;
+      if (duration.numerator != 1) {
+         dur += "*" + duration.numerator;
+      }
       return dur;
    }
    
@@ -147,6 +147,7 @@ MuseScore {
    // addDuration can be used to add durations while handling tied notes
    function addDuration(duration_numden1, duration_numden2)
    {
+      //console.log("duration_numden1 ", duration_numden1, " duration_numden2 ", duration_numden2);
       var num1 = duration_numden1[0];
       var den1 = duration_numden1[1];
       var num2 = duration_numden2[0];
@@ -175,9 +176,9 @@ MuseScore {
    function resetTieOngoing()
    {
       tieOnGoing = ({});
-      for (var note=0; note<128; note++)
+      for (var n=0; n<128; n++)
       {
-         accumulatedDuration[note] = [0,1];
+         accumulatedDuration[n] = [0,1];
       }
    }
    
@@ -320,14 +321,16 @@ MuseScore {
                
             }
             
-            if (i == 0 && (tieOnGoing[notes[i].pitch] == false)) {            
-               chord += "_";
-               chord += panolaAccumulatedDuration(accumulatedDuration[notes[i].pitch]);
-               accumulatedDuration[notes[i].pitch] = [0,1];
-               if (dynamics != "")
-               {
-                  chord += dynamics;
+            if (tieOnGoing[notes[i].pitch] == false) {            
+               if (i == 0) {
+                  chord += "_";
+                  chord += panolaAccumulatedDuration(accumulatedDuration[notes[i].pitch]);
+                  if (dynamics != "")
+                  {
+                     chord += dynamics;
+                  }  
                }
+               accumulatedDuration[notes[i].pitch] = [0,1];
             }
             
             if (i==(notes.length-1) && notes.length >1 && (tieOnGoing[notes[i].pitch] == false))
@@ -341,6 +344,22 @@ MuseScore {
          }  
       }
       return chord;
+   }
+   
+   function listsEqual(list1, list2)
+   {
+      if (list1.length != list2.length)
+      {
+         return false;
+      }
+      for (var el=0; el < list1.length; el++)
+      {
+         if (list1[el] != list2[el])
+         {
+            return false;
+         }
+      }
+      return true;
    }
    
    // element that can save stuff to file - filename hardcoded for now
@@ -416,6 +435,16 @@ MuseScore {
                   // Now handle the note names on the main chord...
                   var notes = cursor.element.notes;
                   var duration = cursor.element.duration;
+                  var debugMeas = tickToMeasure(cursor.tick);
+                  if (debugMeas == 60)
+                  {
+                     console.log("duration num: ", duration.numerator, " denom: ", duration.denominator);
+                     for (var n = 0; n < 128; n++) {
+                        if (accumulatedDuration[n] != null && !listsEqual(accumulatedDuration[n], [0,1])) {
+                           console.log("pitch = ", n, " accumulatedDuration = ", accumulatedDuration[n]);
+                        }
+                     }
+                  }
                   var tuplet_multiplier = [1,1];
                   var tuplet = cursor.element.tuplet;
                   if (tuplet != null) 
